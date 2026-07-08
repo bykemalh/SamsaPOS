@@ -1,6 +1,6 @@
 import { api } from "./api";
 import { buildReceiptHtml, renderApp } from "./render";
-import { cropImageToAspectRatio, printHtml } from "./utils";
+import { cropImageToAspectRatio, printHtml, readFullscreenState, setFullscreenState } from "./utils";
 import type {
   AppView,
   Category,
@@ -17,7 +17,7 @@ class PosApp {
 
   private state: UiState = {
     view: "pos",
-    posPanel: "tables",
+    isFullscreen: false,
     activeModal: null,
     loading: false,
     selectedTableId: null,
@@ -42,7 +42,30 @@ class PosApp {
   }
 
   async init(): Promise<void> {
+    this.state.isFullscreen = await readFullscreenState();
+    this.bindFullscreenListeners();
     await this.refreshAll();
+  }
+
+  private async updateFullscreenState(): Promise<void> {
+    const next = await readFullscreenState();
+    if (next === this.state.isFullscreen) {
+      return;
+    }
+
+    this.state.isFullscreen = next;
+    this.render();
+  }
+
+  private bindFullscreenListeners(): void {
+    document.addEventListener("fullscreenchange", () => {
+      void this.updateFullscreenState();
+    });
+  }
+
+  private async toggleFullscreen(): Promise<void> {
+    this.state.isFullscreen = await setFullscreenState(!this.state.isFullscreen);
+    this.render();
   }
 
   private async refreshAll(): Promise<void> {
@@ -133,7 +156,6 @@ class PosApp {
 
   private async selectTable(tableId: number): Promise<void> {
     this.state.selectedTableId = tableId;
-    this.state.posPanel = "products";
     await this.withLoading(async () => {
       this.state.activeOrder = await api.getOrderByTable(tableId);
     });
@@ -313,10 +335,6 @@ class PosApp {
         this.state.view = view;
         this.state.activeModal = null;
 
-        if (view === "pos") {
-          this.state.posPanel = "tables";
-        }
-
         if (view === "history") {
           await this.withLoading(async () => {
             this.state.closedOrders = await api.getClosedOrders();
@@ -327,14 +345,9 @@ class PosApp {
         this.render();
         return;
       }
-      case "switch-pos-panel": {
-        const panel = button.dataset.panel as UiState["posPanel"];
-        if (panel) {
-          this.state.posPanel = panel;
-          this.render();
-        }
+      case "toggle-fullscreen":
+        await this.toggleFullscreen();
         return;
-      }
       case "close-modal":
         this.closeModal();
         return;
@@ -386,8 +399,6 @@ class PosApp {
           this.state.activeOrder = await api.addItemToTable(this.state.selectedTableId!, productId);
           this.state.dashboard = await api.getDashboard();
         });
-        this.state.posPanel = "order";
-        this.render();
         return;
       }
       case "increase-item":

@@ -5,7 +5,6 @@ import type {
   DiningTable,
   FormModal,
   OrderDetail,
-  PosPanel,
   Product,
   UiState,
 } from "./types";
@@ -19,21 +18,10 @@ const input =
   "min-h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-900 outline-none shadow-sm focus:border-slate-800";
 const panel = "rounded-xl border border-slate-200/80 bg-white p-2.5 shadow-sm sm:p-3";
 const card = "rounded-xl border border-slate-200/80 bg-gradient-to-br from-white to-slate-50 p-2.5 shadow-sm sm:p-3";
-const scrollArea = "min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain";
-const panelVisibility = (panelName: PosPanel, active: PosPanel) =>
-  active === panelName ? "flex min-h-0 flex-col" : "hidden min-h-0 flex-col lg:flex";
+const scrollArea = "min-h-0 flex-1 space-y-1.5 overflow-y-auto overscroll-contain sm:space-y-2";
 
 function navBtn(view: AppView, current: AppView, label: string): string {
   return `<button type="button" data-action="switch-view" data-view="${view}" class="${current === view ? btnPrimary : btnGhost} shrink-0">${label}</button>`;
-}
-
-function posPanelBtn(panel: PosPanel, current: PosPanel, label: string, badge?: number): string {
-  const badgeHtml =
-    badge && badge > 0
-      ? `<span class="ml-1 rounded-full bg-white/25 px-1.5 py-0.5 text-[10px]">${badge}</span>`
-      : "";
-
-  return `<button type="button" data-action="switch-pos-panel" data-panel="${panel}" class="${current === panel ? btnPrimary : btnGhost} min-h-9 px-2 text-xs sm:min-h-10">${label}${badgeHtml}</button>`;
 }
 
 function tableCard(table: DiningTable, selectedTableId: number | null): string {
@@ -46,12 +34,12 @@ function tableCard(table: DiningTable, selectedTableId: number | null): string {
         : "border-emerald-200 bg-gradient-to-br from-emerald-50 to-green-50";
 
   return `
-    <button type="button" data-action="select-table" data-table-id="${table.id}" class="w-full rounded-xl border p-3 text-left shadow-sm ${statusClass} ${selected ? "border-slate-800 ring-2 ring-slate-800/20" : ""}">
-      <div class="flex items-center justify-between gap-2">
-        <span class="text-sm font-bold text-slate-900">${escapeHtml(table.name)}</span>
-        <span class="rounded-full px-2 py-1 text-[10px] font-bold uppercase ${table.status === "occupied" ? "bg-amber-400 text-slate-950" : table.status === "reserved" ? "bg-sky-400 text-slate-950" : "bg-emerald-400 text-slate-950"}">${escapeHtml(table.status)}</span>
+    <button type="button" data-action="select-table" data-table-id="${table.id}" class="w-full rounded-xl border p-2 text-left shadow-sm sm:p-3 ${statusClass} ${selected ? "border-slate-800 ring-2 ring-slate-800/20" : ""}">
+      <div class="flex items-center justify-between gap-1">
+        <span class="truncate text-xs font-bold text-slate-900 sm:text-sm">${escapeHtml(table.name)}</span>
+        <span class="shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase sm:px-2 sm:text-[10px] ${table.status === "occupied" ? "bg-amber-400 text-slate-950" : table.status === "reserved" ? "bg-sky-400 text-slate-950" : "bg-emerald-400 text-slate-950"}">${escapeHtml(table.status)}</span>
       </div>
-      <div class="mt-2 flex items-center justify-between text-xs font-bold text-slate-600">
+      <div class="mt-1.5 flex items-center justify-between text-[10px] font-bold text-slate-600 sm:text-xs">
         <span>${table.itemCount} urun</span>
         <span class="text-slate-900">${formatCurrency(table.currentTotal)}</span>
       </div>
@@ -66,14 +54,14 @@ function categoryFilter(category: Category, selectedCategoryId: number | null): 
 
 function productCard(product: Product): string {
   const image = product.imageData
-    ? `<div class="aspect-[4/3] w-full overflow-hidden rounded-xl"><img src="${product.imageData}" alt="${escapeHtml(product.name)}" class="h-full w-full object-cover" /></div>`
+    ? `<div class="aspect-[4/3] w-full overflow-hidden rounded-xl"><img src="${product.imageData}" alt="${escapeHtml(product.name)}" class="h-full w-full object-cover" decoding="async" /></div>`
     : `<div class="flex aspect-[4/3] w-full items-center justify-center rounded-xl bg-slate-100 text-xs font-bold text-slate-500">Gorsel yok</div>`;
 
   return `
-    <button type="button" data-action="add-to-order" data-product-id="${product.id}" class="rounded-xl border border-slate-200/80 bg-white p-2 text-left shadow-sm">
+    <button type="button" data-action="add-to-order" data-product-id="${product.id}" class="w-full rounded-xl border border-slate-200/80 bg-white p-2 text-left shadow-sm">
       ${image}
       <div class="mt-2">
-        <div class="text-sm font-bold text-slate-900">${escapeHtml(product.name)}</div>
+        <div class="line-clamp-2 text-sm font-bold leading-snug text-slate-900">${escapeHtml(product.name)}</div>
         <div class="mt-1 text-xs font-bold text-slate-600">${formatCurrency(product.price)}</div>
       </div>
     </button>
@@ -101,9 +89,9 @@ function renderOrder(order: OrderDetail | null): string {
             </div>
           </div>
           <div class="mt-2 flex items-center gap-2">
-            <button type="button" data-action="decrease-item" data-item-id="${item.id}" data-quantity="${item.quantity}" class="h-10 w-10 rounded-xl border border-slate-300 bg-slate-100 text-lg font-bold text-slate-900 shadow-sm">-</button>
-            <div class="min-w-10 rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-center text-sm font-bold text-slate-900">${item.quantity}</div>
-            <button type="button" data-action="increase-item" data-item-id="${item.id}" data-quantity="${item.quantity}" class="h-10 w-10 rounded-xl border border-slate-800 bg-slate-900 text-lg font-bold text-white shadow-sm">+</button>
+            <button type="button" data-action="decrease-item" data-item-id="${item.id}" data-quantity="${item.quantity}" class="h-8 w-8 rounded-xl border border-slate-300 bg-slate-100 text-base font-bold text-slate-900 shadow-sm sm:h-10 sm:w-10 sm:text-lg">-</button>
+            <div class="min-w-8 rounded-xl border border-slate-300 bg-slate-50 px-2 py-1.5 text-center text-xs font-bold text-slate-900 sm:min-w-10 sm:px-3 sm:py-2 sm:text-sm">${item.quantity}</div>
+            <button type="button" data-action="increase-item" data-item-id="${item.id}" data-quantity="${item.quantity}" class="h-8 w-8 rounded-xl border border-slate-800 bg-slate-900 text-base font-bold text-white shadow-sm sm:h-10 sm:w-10 sm:text-lg">+</button>
           </div>
         </div>
       `,
@@ -145,35 +133,27 @@ function renderPosView(state: UiState): string {
     if (!state.selectedCategoryId) return true;
     return product.categoryId === state.selectedCategoryId;
   });
-  const orderItemCount = state.activeOrder?.items.length ?? 0;
 
   return `
-    <section class="flex min-h-0 flex-1 flex-col gap-2 lg:gap-3">
-      <div class="grid shrink-0 grid-cols-3 gap-1 lg:hidden">
-        ${posPanelBtn("tables", state.posPanel, "Masa")}
-        ${posPanelBtn("products", state.posPanel, "Urun")}
-        ${posPanelBtn("order", state.posPanel, "Adisyon", orderItemCount)}
-      </div>
-      <div class="grid min-h-0 flex-1 gap-2 lg:grid-cols-[minmax(0,11rem)_minmax(0,1fr)_minmax(0,13rem)] lg:gap-3 xl:grid-cols-[minmax(0,13rem)_minmax(0,1fr)_minmax(0,16rem)]">
-        <aside class="${panel} ${panelVisibility("tables", state.posPanel)} min-h-[calc(100dvh-10.5rem)] lg:min-h-[calc(100dvh-7rem)]">
-          <h2 class="mb-2 shrink-0 text-sm font-bold text-slate-900">Masalar</h2>
-          <div class="${scrollArea}">
-            ${state.dashboard.tables.map((table) => tableCard(table, state.selectedTableId)).join("")}
-          </div>
-        </aside>
-        <section class="${panel} ${panelVisibility("products", state.posPanel)} min-h-[calc(100dvh-10.5rem)] lg:min-h-[calc(100dvh-7rem)]">
-          <div class="mb-2 flex shrink-0 gap-2 overflow-x-auto pb-1">
-            <button type="button" data-action="filter-category" data-category-id="" class="${state.selectedCategoryId === null ? btnPrimary : btnGhost} shrink-0">Tumu</button>
-            ${categories.map((c) => categoryFilter(c, state.selectedCategoryId)).join("")}
-          </div>
-          <div class="grid min-h-0 flex-1 grid-cols-2 gap-2 overflow-y-auto overscroll-contain min-[520px]:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-            ${filteredProducts.length ? filteredProducts.map(productCard).join("") : '<div class="col-span-full rounded-xl border border-dashed border-slate-300 p-6 text-center text-xs font-bold text-slate-500">Urun yok</div>'}
-          </div>
-        </section>
-        <aside class="${panel} ${panelVisibility("order", state.posPanel)} min-h-[calc(100dvh-10.5rem)] lg:min-h-[calc(100dvh-7rem)]">
-          ${renderOrder(state.activeOrder)}
-        </aside>
-      </div>
+    <section class="grid min-h-[calc(100dvh-6.5rem)] min-h-0 flex-1 grid-cols-[minmax(0,0.74fr)_minmax(0,1.52fr)_minmax(0,0.9fr)] gap-1.5 sm:gap-2 xl:gap-3">
+      <aside class="${panel} flex min-h-0 flex-col overflow-hidden">
+        <h2 class="mb-1.5 shrink-0 text-xs font-bold text-slate-900 sm:text-sm">Masalar</h2>
+        <div class="${scrollArea}">
+          ${state.dashboard.tables.map((table) => tableCard(table, state.selectedTableId)).join("")}
+        </div>
+      </aside>
+      <section class="${panel} flex min-h-0 flex-col overflow-hidden">
+        <div class="mb-1.5 flex shrink-0 gap-1.5 overflow-x-auto pb-1 sm:mb-2 sm:gap-2">
+          <button type="button" data-action="filter-category" data-category-id="" class="${state.selectedCategoryId === null ? btnPrimary : btnGhost} shrink-0">Tumu</button>
+          ${categories.map((c) => categoryFilter(c, state.selectedCategoryId)).join("")}
+        </div>
+        <div class="grid min-h-0 flex-1 grid-cols-2 content-start items-start gap-2 overflow-y-auto overscroll-contain min-[900px]:grid-cols-3 min-[1200px]:grid-cols-4">
+          ${filteredProducts.length ? filteredProducts.map(productCard).join("") : '<div class="col-span-full rounded-xl border border-dashed border-slate-300 p-6 text-center text-xs font-bold text-slate-500">Urun yok</div>'}
+        </div>
+      </section>
+      <aside class="${panel} flex min-h-0 flex-col overflow-hidden">
+        ${renderOrder(state.activeOrder)}
+      </aside>
     </section>
   `;
 }
@@ -408,7 +388,10 @@ export function renderApp(state: UiState): string {
     <div class="flex min-h-dvh flex-col bg-gradient-to-br from-slate-100 via-white to-slate-100 text-slate-900">
       <div class="mx-auto flex w-full max-w-[1800px] flex-1 flex-col px-2 py-2 sm:px-3">
         <header class="mb-2 flex shrink-0 flex-col gap-2 rounded-xl border border-slate-200/80 bg-white/90 px-2.5 py-2 shadow-sm backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:px-3">
-          <span class="text-sm font-bold text-slate-900">Samsa POS</span>
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-sm font-bold text-slate-900">Samsa POS</span>
+            <button type="button" data-action="toggle-fullscreen" class="${btnGhost} shrink-0 px-2.5 text-xs sm:px-3">${state.isFullscreen ? "Pencere" : "Tam Ekran"}</button>
+          </div>
           <nav class="flex gap-1 overflow-x-auto pb-0.5">
             ${navBtn("pos", state.view, "POS")}
             ${navBtn("tables", state.view, "Masa")}

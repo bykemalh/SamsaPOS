@@ -156,3 +156,27 @@ export function printHtml(html: string): Promise<void> {
     window.setTimeout(startPrint, 500);
   });
 }
+
+export async function readFullscreenState(): Promise<boolean> {
+  try {
+    const { getCurrentWindow } = await import("@tauri-apps/api/window");
+    return await getCurrentWindow().isFullscreen();
+  } catch {
+    return Boolean(document.fullscreenElement);
+  }
+}
+
+export async function setFullscreenState(enabled: boolean): Promise<boolean> {
+  try {
+    const { getCurrentWindow } = await import("@tauri-apps/api/window");
+    await getCurrentWindow().setFullscreen(enabled);
+    return await getCurrentWindow().isFullscreen();
+  } catch {
+    if (enabled) {
+      await document.documentElement.requestFullscreen();
+    } else if (document.fullscreenElement) {
+      await document.exitFullscreen();
+    }
+    return Boolean(document.fullscreenElement);
+  }
+}
