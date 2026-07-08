@@ -5,22 +5,35 @@ import type {
   DiningTable,
   FormModal,
   OrderDetail,
+  PosPanel,
   Product,
   UiState,
 } from "./types";
 import { escapeHtml, formatCurrency, formatDateTime } from "./utils";
 
-const btn = "min-h-10 rounded-xl border px-3 py-2 text-sm font-bold shadow-sm";
+const btn = "min-h-9 rounded-xl border px-2.5 py-1.5 text-xs font-bold shadow-sm sm:min-h-10 sm:px-3 sm:py-2 sm:text-sm";
 const btnPrimary = `${btn} border-slate-800 bg-gradient-to-r from-slate-800 to-slate-900 text-white`;
 const btnGhost = `${btn} border-slate-200 bg-white text-slate-800`;
 const btnDanger = `${btn} border-rose-200 bg-rose-50 text-rose-700`;
 const input =
   "min-h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-900 outline-none shadow-sm focus:border-slate-800";
-const panel = "rounded-xl border border-slate-200/80 bg-white p-3 shadow-sm";
-const card = "rounded-xl border border-slate-200/80 bg-gradient-to-br from-white to-slate-50 p-3 shadow-sm";
+const panel = "rounded-xl border border-slate-200/80 bg-white p-2.5 shadow-sm sm:p-3";
+const card = "rounded-xl border border-slate-200/80 bg-gradient-to-br from-white to-slate-50 p-2.5 shadow-sm sm:p-3";
+const scrollArea = "min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain";
+const panelVisibility = (panelName: PosPanel, active: PosPanel) =>
+  active === panelName ? "flex min-h-0 flex-col" : "hidden min-h-0 flex-col lg:flex";
 
 function navBtn(view: AppView, current: AppView, label: string): string {
-  return `<button type="button" data-action="switch-view" data-view="${view}" class="${current === view ? btnPrimary : btnGhost} text-xs">${label}</button>`;
+  return `<button type="button" data-action="switch-view" data-view="${view}" class="${current === view ? btnPrimary : btnGhost} shrink-0">${label}</button>`;
+}
+
+function posPanelBtn(panel: PosPanel, current: PosPanel, label: string, badge?: number): string {
+  const badgeHtml =
+    badge && badge > 0
+      ? `<span class="ml-1 rounded-full bg-white/25 px-1.5 py-0.5 text-[10px]">${badge}</span>`
+      : "";
+
+  return `<button type="button" data-action="switch-pos-panel" data-panel="${panel}" class="${current === panel ? btnPrimary : btnGhost} min-h-9 px-2 text-xs sm:min-h-10">${label}${badgeHtml}</button>`;
 }
 
 function tableCard(table: DiningTable, selectedTableId: number | null): string {
@@ -48,7 +61,7 @@ function tableCard(table: DiningTable, selectedTableId: number | null): string {
 
 function categoryFilter(category: Category, selectedCategoryId: number | null): string {
   const selected = selectedCategoryId === category.id;
-  return `<button type="button" data-action="filter-category" data-category-id="${category.id}" class="${selected ? btnPrimary : btnGhost}">${escapeHtml(category.name)}</button>`;
+  return `<button type="button" data-action="filter-category" data-category-id="${category.id}" class="${selected ? btnPrimary : btnGhost} shrink-0">${escapeHtml(category.name)}</button>`;
 }
 
 function productCard(product: Product): string {
@@ -69,7 +82,7 @@ function productCard(product: Product): string {
 
 function renderOrder(order: OrderDetail | null): string {
   if (!order) {
-    return `<div class="flex min-h-[320px] items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-center text-sm font-bold text-slate-500">Masa secin.</div>`;
+    return `<div class="flex min-h-[12rem] flex-1 items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-center text-sm font-bold text-slate-500 sm:min-h-[16rem]">Masa secin.</div>`;
   }
 
   const items = order.items.length
@@ -99,22 +112,22 @@ function renderOrder(order: OrderDetail | null): string {
     : `<div class="rounded-xl border border-dashed border-slate-300 p-4 text-center text-xs font-bold text-slate-500">Urun yok.</div>`;
 
   return `
-    <div class="space-y-2">
-      <div class="${panel}">
+    <div class="flex min-h-0 flex-1 flex-col gap-2">
+      <div class="${panel} shrink-0">
         <div class="flex items-center justify-between gap-2">
-          <div>
+          <div class="min-w-0">
             <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Adisyon</div>
-            <h2 class="text-lg font-bold text-slate-900">${escapeHtml(order.tableName)}</h2>
+            <h2 class="truncate text-base font-bold text-slate-900 sm:text-lg">${escapeHtml(order.tableName)}</h2>
           </div>
-          <button type="button" data-action="print-order" data-order-id="${order.orderId ?? ""}" class="${btnGhost}">Fis</button>
+          <button type="button" data-action="print-order" data-order-id="${order.orderId ?? ""}" class="${btnGhost} shrink-0">Fis</button>
         </div>
         <div class="mt-1 text-xs font-bold text-slate-500">${formatDateTime(order.openedAt)}</div>
       </div>
-      <div class="max-h-[calc(100vh-22rem)] space-y-2 overflow-y-auto">${items}</div>
-      <div class="${panel}">
+      <div class="${scrollArea}">${items}</div>
+      <div class="${panel} shrink-0">
         <div class="flex items-center justify-between">
           <span class="text-sm font-bold text-slate-600">Toplam</span>
-          <span class="text-xl font-bold text-slate-900">${formatCurrency(order.total)}</span>
+          <span class="text-lg font-bold text-slate-900 sm:text-xl">${formatCurrency(order.total)}</span>
         </div>
         <div class="mt-2 grid grid-cols-2 gap-2">
           <button type="button" data-action="clear-order" data-table-id="${order.tableId}" class="${btnGhost}">Temizle</button>
@@ -132,25 +145,35 @@ function renderPosView(state: UiState): string {
     if (!state.selectedCategoryId) return true;
     return product.categoryId === state.selectedCategoryId;
   });
+  const orderItemCount = state.activeOrder?.items.length ?? 0;
 
   return `
-    <section class="grid min-h-[calc(100vh-4rem)] grid-cols-[240px_minmax(0,1fr)_300px] gap-3">
-      <aside class="${panel}">
-        <h2 class="mb-2 text-sm font-bold text-slate-900">Masalar</h2>
-        <div class="max-h-[calc(100vh-8rem)] space-y-2 overflow-y-auto">
-          ${state.dashboard.tables.map((table) => tableCard(table, state.selectedTableId)).join("")}
-        </div>
-      </aside>
-      <section class="${panel}">
-        <div class="mb-2 flex flex-wrap items-center gap-2">
-          <button type="button" data-action="filter-category" data-category-id="" class="${state.selectedCategoryId === null ? btnPrimary : btnGhost}">Tumu</button>
-          ${categories.map((c) => categoryFilter(c, state.selectedCategoryId)).join("")}
-        </div>
-        <div class="grid max-h-[calc(100vh-8rem)] grid-cols-4 gap-2 overflow-y-auto">
-          ${filteredProducts.length ? filteredProducts.map(productCard).join("") : '<div class="col-span-4 rounded-xl border border-dashed border-slate-300 p-6 text-center text-xs font-bold text-slate-500">Urun yok</div>'}
-        </div>
-      </section>
-      <aside class="${panel}">${renderOrder(state.activeOrder)}</aside>
+    <section class="flex min-h-0 flex-1 flex-col gap-2 lg:gap-3">
+      <div class="grid shrink-0 grid-cols-3 gap-1 lg:hidden">
+        ${posPanelBtn("tables", state.posPanel, "Masa")}
+        ${posPanelBtn("products", state.posPanel, "Urun")}
+        ${posPanelBtn("order", state.posPanel, "Adisyon", orderItemCount)}
+      </div>
+      <div class="grid min-h-0 flex-1 gap-2 lg:grid-cols-[minmax(0,11rem)_minmax(0,1fr)_minmax(0,13rem)] lg:gap-3 xl:grid-cols-[minmax(0,13rem)_minmax(0,1fr)_minmax(0,16rem)]">
+        <aside class="${panel} ${panelVisibility("tables", state.posPanel)} min-h-[calc(100dvh-10.5rem)] lg:min-h-[calc(100dvh-7rem)]">
+          <h2 class="mb-2 shrink-0 text-sm font-bold text-slate-900">Masalar</h2>
+          <div class="${scrollArea}">
+            ${state.dashboard.tables.map((table) => tableCard(table, state.selectedTableId)).join("")}
+          </div>
+        </aside>
+        <section class="${panel} ${panelVisibility("products", state.posPanel)} min-h-[calc(100dvh-10.5rem)] lg:min-h-[calc(100dvh-7rem)]">
+          <div class="mb-2 flex shrink-0 gap-2 overflow-x-auto pb-1">
+            <button type="button" data-action="filter-category" data-category-id="" class="${state.selectedCategoryId === null ? btnPrimary : btnGhost} shrink-0">Tumu</button>
+            ${categories.map((c) => categoryFilter(c, state.selectedCategoryId)).join("")}
+          </div>
+          <div class="grid min-h-0 flex-1 grid-cols-2 gap-2 overflow-y-auto overscroll-contain min-[520px]:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+            ${filteredProducts.length ? filteredProducts.map(productCard).join("") : '<div class="col-span-full rounded-xl border border-dashed border-slate-300 p-6 text-center text-xs font-bold text-slate-500">Urun yok</div>'}
+          </div>
+        </section>
+        <aside class="${panel} ${panelVisibility("order", state.posPanel)} min-h-[calc(100dvh-10.5rem)] lg:min-h-[calc(100dvh-7rem)]">
+          ${renderOrder(state.activeOrder)}
+        </aside>
+      </div>
     </section>
   `;
 }
@@ -158,11 +181,11 @@ function renderPosView(state: UiState): string {
 function renderTablePage(state: UiState): string {
   return `
     <section class="${panel}">
-      <div class="mb-3 flex items-center justify-between">
+      <div class="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <h2 class="text-base font-bold text-slate-900">Masa Listesi</h2>
-        <button type="button" data-action="new-table" class="${btnPrimary} text-xs">+ Yeni Masa</button>
+        <button type="button" data-action="new-table" class="${btnPrimary} shrink-0 text-xs">+ Yeni Masa</button>
       </div>
-      <div class="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+      <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
         ${state.dashboard.tables
           .map(
             (table) => `
@@ -190,16 +213,16 @@ function renderTablePage(state: UiState): string {
 function renderCategoryPage(state: UiState): string {
   return `
     <section class="${panel}">
-      <div class="mb-3 flex items-center justify-between">
+      <div class="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <h2 class="text-base font-bold text-slate-900">Kategori Listesi</h2>
-        <button type="button" data-action="new-category" class="${btnPrimary} text-xs">+ Yeni Kategori</button>
+        <button type="button" data-action="new-category" class="${btnPrimary} shrink-0 text-xs">+ Yeni Kategori</button>
       </div>
-      <div class="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+      <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
         ${state.dashboard.categories
           .map(
             (category) => `
           <div class="${card}">
-            <div class="flex items-center justify-between">
+            <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div class="text-sm font-bold text-slate-900">${escapeHtml(category.name)}</div>
               <div class="flex gap-2">
                 <button type="button" data-action="edit-category" data-category-id="${category.id}" class="${btnGhost} text-xs">Duzenle</button>
@@ -218,11 +241,11 @@ function renderCategoryPage(state: UiState): string {
 function renderProductPage(state: UiState): string {
   return `
     <section class="${panel}">
-      <div class="mb-3 flex items-center justify-between">
+      <div class="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <h2 class="text-base font-bold text-slate-900">Urun Listesi</h2>
-        <button type="button" data-action="new-product" class="${btnPrimary} text-xs">+ Yeni Urun</button>
+        <button type="button" data-action="new-product" class="${btnPrimary} shrink-0 text-xs">+ Yeni Urun</button>
       </div>
-      <div class="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+      <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
         ${state.dashboard.products
           .map(
             (product) => `
@@ -259,12 +282,12 @@ function renderHistoryPage(history: ClosedOrderSummary[]): string {
           .map(
             (entry) => `
           <div class="${card}">
-            <div class="flex items-center justify-between">
-              <div>
+            <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div class="min-w-0">
                 <div class="text-sm font-bold text-slate-900">${escapeHtml(entry.tableName)}</div>
                 <div class="text-xs font-bold text-slate-500">${formatDateTime(entry.closedAt)} • ${entry.itemCount} urun</div>
               </div>
-              <div class="flex items-center gap-2">
+              <div class="flex shrink-0 items-center gap-2">
                 <span class="text-sm font-bold text-slate-900">${formatCurrency(entry.total)}</span>
                 <button type="button" data-action="print-receipt" data-order-id="${entry.orderId}" class="${btnGhost} text-xs">Fis</button>
               </div>
@@ -352,8 +375,8 @@ function renderModal(state: UiState): string {
   }
 
   return `
-    <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
-      <div class="w-full max-w-md rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xl">
+    <div class="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/40 p-2 backdrop-blur-sm sm:items-center sm:p-4">
+      <div class="max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xl">
         <div class="mb-3 flex items-center justify-between">
           <h2 class="text-base font-bold text-slate-900">${modalTitles[state.activeModal](state)}</h2>
           <button type="button" data-action="close-modal" class="${btnGhost} text-xs">X</button>
@@ -382,11 +405,11 @@ function renderView(state: UiState): string {
 
 export function renderApp(state: UiState): string {
   return `
-    <div class="min-h-screen bg-gradient-to-br from-slate-100 via-white to-slate-100 text-slate-900">
-      <div class="mx-auto max-w-[1800px] px-3 py-2">
-        <header class="mb-2 flex items-center justify-between rounded-xl border border-slate-200/80 bg-white/90 px-3 py-2 shadow-sm backdrop-blur">
+    <div class="flex min-h-dvh flex-col bg-gradient-to-br from-slate-100 via-white to-slate-100 text-slate-900">
+      <div class="mx-auto flex w-full max-w-[1800px] flex-1 flex-col px-2 py-2 sm:px-3">
+        <header class="mb-2 flex shrink-0 flex-col gap-2 rounded-xl border border-slate-200/80 bg-white/90 px-2.5 py-2 shadow-sm backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:px-3">
           <span class="text-sm font-bold text-slate-900">Samsa POS</span>
-          <nav class="flex flex-wrap gap-1">
+          <nav class="flex gap-1 overflow-x-auto pb-0.5">
             ${navBtn("pos", state.view, "POS")}
             ${navBtn("tables", state.view, "Masa")}
             ${navBtn("categories", state.view, "Kategori")}
@@ -394,17 +417,17 @@ export function renderApp(state: UiState): string {
             ${navBtn("history", state.view, "Gecmis")}
           </nav>
         </header>
-        <main>${renderView(state)}</main>
+        <main class="flex min-h-0 flex-1 flex-col">${renderView(state)}</main>
       </div>
       ${renderModal(state)}
       ${
         state.loading
-          ? `<div class="pointer-events-none fixed inset-0 grid place-items-center bg-white/50 backdrop-blur-sm"><div class="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-900 shadow-sm">Yukleniyor...</div></div>`
+          ? `<div class="pointer-events-none fixed inset-0 z-40 grid place-items-center bg-white/50 backdrop-blur-sm"><div class="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-900 shadow-sm">Yukleniyor...</div></div>`
           : ""
       }
       ${
         state.toast
-          ? `<div class="fixed bottom-4 right-4 rounded-xl border px-3 py-2 text-sm font-bold shadow-sm ${state.toast.type === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-rose-200 bg-rose-50 text-rose-800"}">${escapeHtml(state.toast.message)}</div>`
+          ? `<div class="fixed bottom-3 left-3 right-3 z-50 rounded-xl border px-3 py-2 text-center text-sm font-bold shadow-sm sm:bottom-4 sm:left-auto sm:right-4 sm:text-left ${state.toast.type === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-rose-200 bg-rose-50 text-rose-800"}">${escapeHtml(state.toast.message)}</div>`
           : ""
       }
     </div>

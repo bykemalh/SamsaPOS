@@ -16,8 +16,8 @@
         "title": "Samsa POS",
         "width": 1600,
         "height": 920,
-        "minWidth": 1280,
-        "minHeight": 760,
+        "minWidth": 480,
+        "minHeight": 640,
         "resizable": true
       }
     ],
@@ -27,6 +27,6 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all"
+    "targets": ["deb", "rpm"]
   }
 }

@@ -1,5 +1,6 @@
 export type AppView = "pos" | "tables" | "categories" | "products" | "history";
 export type FormModal = "table" | "category" | "product";
+export type PosPanel = "tables" | "products" | "order";
 
 export interface DiningTable {
   id: number;
@@ -81,6 +82,7 @@ export interface ProductDraft {
 
 export interface UiState {
   view: AppView;
+  posPanel: PosPanel;
   activeModal: FormModal | null;
   loading: boolean;
   selectedTableId: number | null;

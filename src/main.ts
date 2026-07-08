@@ -17,6 +17,7 @@ class PosApp {
 
   private state: UiState = {
     view: "pos",
+    posPanel: "tables",
     activeModal: null,
     loading: false,
     selectedTableId: null,
@@ -132,6 +133,7 @@ class PosApp {
 
   private async selectTable(tableId: number): Promise<void> {
     this.state.selectedTableId = tableId;
+    this.state.posPanel = "products";
     await this.withLoading(async () => {
       this.state.activeOrder = await api.getOrderByTable(tableId);
     });
@@ -311,6 +313,10 @@ class PosApp {
         this.state.view = view;
         this.state.activeModal = null;
 
+        if (view === "pos") {
+          this.state.posPanel = "tables";
+        }
+
         if (view === "history") {
           await this.withLoading(async () => {
             this.state.closedOrders = await api.getClosedOrders();
@@ -319,6 +325,14 @@ class PosApp {
         }
 
         this.render();
+        return;
+      }
+      case "switch-pos-panel": {
+        const panel = button.dataset.panel as UiState["posPanel"];
+        if (panel) {
+          this.state.posPanel = panel;
+          this.render();
+        }
         return;
       }
       case "close-modal":
@@ -372,6 +386,8 @@ class PosApp {
           this.state.activeOrder = await api.addItemToTable(this.state.selectedTableId!, productId);
           this.state.dashboard = await api.getDashboard();
         });
+        this.state.posPanel = "order";
+        this.render();
         return;
       }
       case "increase-item":
