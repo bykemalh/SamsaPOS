@@ -11,10 +11,14 @@ export function formatDateTime(value?: string | null): string {
     return "-";
   }
 
+  // SQLite CURRENT_TIMESTAMP returns UTC without timezone (space-separated)
+  // Normalize to ISO format with Z to avoid local-time misinterpretation
+  const normalized = value.includes("T") ? value : value.replace(" ", "T") + "Z";
+
   return new Intl.DateTimeFormat("tr-TR", {
     dateStyle: "short",
     timeStyle: "short",
-  }).format(new Date(value));
+  }).format(new Date(normalized));
 }
 
 export function escapeHtml(value: string): string {

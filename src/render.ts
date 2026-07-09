@@ -106,8 +106,8 @@ function productCard(product: Product): string {
         ${image}
       </div>
       <div class="p-[3px] flex flex-col items-center gap-[1px] w-full">
-        <span class="font-semibold text-on-surface text-center text-[9px] leading-tight truncate w-full" title="${escapeHtml(product.name)}">${escapeHtml(product.name)}</span>
-        <span class="font-numeric-pos text-primary text-[9px] font-bold">${formatCurrency(product.price)}</span>
+        <span class="font-semibold text-on-surface text-center text-xs xl:text-sm leading-tight truncate w-full" title="${escapeHtml(product.name)}">${escapeHtml(product.name)}</span>
+        <span class="font-numeric-pos text-primary text-xs xl:text-sm font-bold">${formatCurrency(product.price)}</span>
       </div>
     </button>
   `;
@@ -781,8 +781,8 @@ export function renderApp(state: UiState): string {
       }
       ${
         state.toast
-          ? `<div class="fixed bottom-3 right-3 z-50 rounded-xl border px-4 py-2.5 text-sm font-bold shadow-lg flex items-center gap-sm ${state.toast.type === "success" ? "border-secondary-container bg-secondary-container/20 text-on-secondary-container" : "border-error-container bg-error-container/20 text-on-error-container"}">
-              ${icon(state.toast.type === "success" ? "check_circle" : "error", "w-5 h-5")}
+          ? `<div class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 rounded-xl border px-6 py-3 text-base font-bold shadow-lg flex items-center gap-sm ${state.toast.type === "success" ? "border-secondary-container bg-secondary-container/20 text-on-secondary-container" : "border-error-container bg-error-container/20 text-on-error-container"}">
+              ${icon(state.toast.type === "success" ? "check_circle" : "error", "w-6 h-6")}
               ${escapeHtml(state.toast.message)}
              </div>`
           : ""
