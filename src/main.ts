@@ -4,6 +4,7 @@ import { cropImageToAspectRatio, printHtml, readFullscreenState, setFullscreenSt
 import type {
   AppView,
   Category,
+  ConfirmDialog,
   DiningTable,
   Product,
   ProductPayload,
@@ -19,6 +20,7 @@ class PosApp {
     view: "pos",
     isFullscreen: false,
     activeModal: null,
+    confirmDialog: null,
     loading: false,
     selectedTableId: null,
     selectedCategoryId: null,
@@ -39,6 +41,8 @@ class PosApp {
     this.root = root;
     this.root.addEventListener("click", (event) => this.handleClick(event));
     this.root.addEventListener("change", (event) => this.handleChange(event));
+    this.root.addEventListener("input", (event) => this.handleInput(event));
+    document.addEventListener("contextmenu", (e) => e.preventDefault());
   }
 
   async init(): Promise<void> {
@@ -103,16 +107,21 @@ class PosApp {
     this.root.innerHTML = renderApp(this.state);
   }
 
-  private async withLoading(task: () => Promise<void>): Promise<void> {
-    await this.withLoadingResult(async () => {
+  private async withLoading(task: () => Promise<void>): Promise<boolean> {
+    const result = await this.withLoadingResult(async () => {
       await task();
-      return undefined;
+      return true;
     });
+    return result === true;
   }
 
   private async withLoadingResult<T>(task: () => Promise<T>): Promise<T | null> {
-    this.state.loading = true;
-    this.render();
+    let showSpinner = false;
+    const timer = window.setTimeout(() => {
+      showSpinner = true;
+      this.state.loading = true;
+      this.render();
+    }, 200);
 
     try {
       return await task();
@@ -121,7 +130,10 @@ class PosApp {
       this.showToast(message, "error");
       return null;
     } finally {
-      this.state.loading = false;
+      window.clearTimeout(timer);
+      if (showSpinner) {
+        this.state.loading = false;
+      }
       this.render();
     }
   }
@@ -152,6 +164,31 @@ class PosApp {
       this.state.toast = null;
       this.render();
     }, 2500);
+  }
+
+  private openConfirmDialog(options: Omit<ConfirmDialog, "onConfirm">): Promise<boolean> {
+    return new Promise((resolve) => {
+      const { onConfirmPrint, ...rest } = options;
+      this.state.confirmDialog = {
+        ...rest,
+        onConfirm: () => resolve(true),
+        onConfirmPrint: onConfirmPrint
+          ? () => { onConfirmPrint(); resolve(true); }
+          : undefined,
+      };
+      this.render();
+      const handler = (ev: Event) => {
+        const target = ev.target as HTMLElement;
+        const btn = target.closest<HTMLButtonElement>("[data-action]");
+        if (!btn) return;
+        const action = btn.dataset.action;
+        if (action === "confirm-no") {
+          this.root.removeEventListener("click", handler);
+          resolve(false);
+        }
+      };
+      this.root.addEventListener("click", handler);
+    });
   }
 
   private async selectTable(tableId: number): Promise<void> {
@@ -243,7 +280,7 @@ class PosApp {
 
     const draftId = this.state.tableDraft.id;
 
-    await this.withLoading(async () => {
+    const success = await this.withLoading(async () => {
       if (draftId) {
         await api.updateTable(draftId, name);
       } else {
@@ -252,9 +289,26 @@ class PosApp {
       await this.loadData();
     });
 
-    this.resetTableForm();
-    this.closeModal();
-    this.showToast(draftId ? "Masa guncellendi." : "Masa eklendi.", "success");
+    if (success) {
+      this.resetTableForm();
+      this.closeModal();
+      this.showToast(draftId ? "Masa guncellendi." : "Masa eklendi.", "success");
+    }
+  }
+
+  private async savePackageOrder(): Promise<void> {
+    const customer = document.querySelector<HTMLInputElement>("#package-customer-input")?.value.trim() || "";
+    const name = customer ? `Paket - ${customer}` : `Paket Siparişi`;
+    const success = await this.withLoading(async () => {
+      const table = await api.createTable(name);
+      this.state.dashboard = await api.getDashboard();
+      this.state.selectedTableId = table.id;
+      this.state.activeOrder = await api.getOrderByTable(table.id);
+    });
+    if (success) {
+      this.closeModal();
+      this.showToast("Paket sipariş oluşturuldu.", "success");
+    }
   }
 
   private async saveCategory(): Promise<void> {
@@ -268,7 +322,7 @@ class PosApp {
 
     const draftId = this.state.categoryDraft.id;
 
-    await this.withLoading(async () => {
+    const success = await this.withLoading(async () => {
       if (draftId) {
         await api.updateCategory(draftId, name);
       } else {
@@ -277,9 +331,11 @@ class PosApp {
       await this.loadData();
     });
 
-    this.resetCategoryForm();
-    this.closeModal();
-    this.showToast(draftId ? "Kategori guncellendi." : "Kategori eklendi.", "success");
+    if (success) {
+      this.resetCategoryForm();
+      this.closeModal();
+      this.showToast(draftId ? "Kategori guncellendi." : "Kategori eklendi.", "success");
+    }
   }
 
   private async saveProduct(): Promise<void> {
@@ -306,7 +362,7 @@ class PosApp {
       payload.id = draftId;
     }
 
-    await this.withLoading(async () => {
+    const success = await this.withLoading(async () => {
       if (payload.id) {
         await api.updateProduct(payload);
       } else {
@@ -315,15 +371,38 @@ class PosApp {
       await this.loadData();
     });
 
-    this.resetProductForm();
-    this.closeModal();
-    this.showToast(draftId ? "Urun guncellendi." : "Urun eklendi.", "success");
+    if (success) {
+      this.resetProductForm();
+      this.closeModal();
+      this.showToast(draftId ? "Urun guncellendi." : "Urun eklendi.", "success");
+    }
   }
 
   private async handleClick(event: Event): Promise<void> {
-    const target = event.target as HTMLElement | null;
-    const button = target?.closest<HTMLElement>("[data-action]");
+    const button = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-action]");
     if (!button) {
+      return;
+    }
+
+    if (button.dataset.action === "confirm-no") {
+      this.state.confirmDialog = null;
+      this.render();
+      return;
+    }
+
+    if (button.dataset.action === "confirm-yes") {
+      const cb = this.state.confirmDialog?.onConfirm;
+      this.state.confirmDialog = null;
+      this.render();
+      if (cb) cb();
+      return;
+    }
+
+    if (button.dataset.action === "confirm-print") {
+      const cb = this.state.confirmDialog?.onConfirmPrint;
+      this.state.confirmDialog = null;
+      this.render();
+      if (cb) cb();
       return;
     }
 
@@ -351,8 +430,29 @@ class PosApp {
       case "close-modal":
         this.closeModal();
         return;
-      case "new-table":
-        this.openTableModal({ id: null, name: "" });
+      case "new-order":
+        this.state.activeModal = "new-order";
+        this.render();
+        return;
+      case "new-table-order":
+        this.state.activeModal = "table-select";
+        this.render();
+        return;
+      case "select-table-and-close": {
+        const tableId = Number(button.dataset.tableId);
+        if (tableId) {
+          this.state.activeModal = null;
+          this.render();
+          await this.selectTable(tableId);
+        }
+        return;
+      }
+      case "new-package-order":
+        this.state.activeModal = "package-order";
+        this.render();
+        return;
+      case "save-package-order":
+        await this.savePackageOrder();
         return;
       case "new-category":
         this.openCategoryModal({ id: null, name: "" });
@@ -421,30 +521,87 @@ class PosApp {
         });
         return;
       }
+      case "delete-package": {
+        const pkgTableId = Number(button.dataset.tableId);
+        const delOk = await this.openConfirmDialog({
+          message: "Paket siparişi silinsin mi?",
+          subMessage: "Bu paket siparişi ve masası tamamen silinecek.",
+          confirmLabel: "Evet, Sil",
+          danger: true,
+        });
+        this.state.confirmDialog = null;
+        this.render();
+        if (!delOk) return;
+        await this.withLoading(async () => {
+          await api.closeTableOrder(pkgTableId);
+          await api.deleteTable(pkgTableId);
+          this.state.dashboard = await api.getDashboard();
+          this.state.closedOrders = await api.getClosedOrders();
+          if (this.state.selectedTableId === pkgTableId) {
+            this.state.selectedTableId = null;
+            this.state.activeOrder = null;
+          }
+        });
+        this.showToast("Paket siparişi silindi.", "success");
+        return;
+      }
       case "clear-order": {
         const tableId = Number(button.dataset.tableId);
-        if (!window.confirm("Bu masadaki tum siparisler silinsin mi?")) {
-          return;
-        }
+        const isPackage = this.state.activeOrder?.tableName?.startsWith("Paket") ?? false;
+        const clearOk = await this.openConfirmDialog({
+          message: isPackage ? "Paket siparişi silinsin mi?" : "Adisyon Temizlensin mi?",
+          subMessage: isPackage ? "Paket siparişi ve masası tamamen silinecek." : "Bu masadaki tüm siparişler silinecek. Bu işlem geri alınamaz.",
+          confirmLabel: isPackage ? "Evet, Sil" : "Evet, Temizle",
+          danger: true,
+        });
+        this.state.confirmDialog = null;
+        this.render();
+        if (!clearOk) return;
 
         await this.withLoading(async () => {
-          this.state.activeOrder = await api.clearTableOrder(tableId);
+          if (isPackage) {
+            await api.closeTableOrder(tableId);
+            await api.deleteTable(tableId);
+            this.state.closedOrders = await api.getClosedOrders();
+            this.state.selectedTableId = null;
+            this.state.activeOrder = null;
+          } else {
+            this.state.activeOrder = await api.clearTableOrder(tableId);
+          }
           this.state.dashboard = await api.getDashboard();
         });
-        this.showToast("Adisyon temizlendi.", "success");
+        this.showToast(isPackage ? "Paket siparişi silindi." : "Adisyon temizlendi.", "success");
         return;
       }
       case "close-order": {
         const tableId = Number(button.dataset.tableId);
-        if (!window.confirm("Adisyon kapatilsin mi?")) {
+        const items = this.state.activeOrder?.items;
+        if (!items || items.length === 0) {
+          this.showToast("Siparişte ürün yok, kapatılamaz.", "error");
           return;
         }
+        const isPackage = this.state.activeOrder?.tableName?.startsWith("Paket") ?? false;
+        let shouldPrint = false;
+        const closeOk = await this.openConfirmDialog({
+          message: "Adisyon Kapatılsın mı?",
+          subMessage: "Hesap onaylanacak.",
+          confirmLabel: "Evet",
+          confirmPrintLabel: "Evet, Fişle Yazdır",
+          danger: false,
+          onConfirmPrint: () => { shouldPrint = true; },
+        });
+        this.state.confirmDialog = null;
+        this.render();
+        if (!closeOk) return;
 
         const closedOrder = await this.withLoadingResult(async () => {
           const order = await api.closeTableOrder(tableId);
+          if (isPackage) {
+            await api.deleteTable(tableId);
+          }
           this.state.dashboard = await api.getDashboard();
           this.state.closedOrders = await api.getClosedOrders();
-          this.state.activeOrder = await api.getOrderByTable(tableId);
+          this.state.activeOrder = isPackage ? null : await api.getOrderByTable(tableId);
           return order;
         });
 
@@ -454,11 +611,13 @@ class PosApp {
 
         this.showToast("Adisyon kapatildi.", "success");
 
-        try {
-          await printHtml(buildReceiptHtml(closedOrder));
-        } catch (error) {
-          const message = error instanceof Error ? error.message : String(error);
-          this.showToast(message, "error");
+        if (shouldPrint) {
+          try {
+            await printHtml(buildReceiptHtml(closedOrder));
+          } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            this.showToast(message, "error");
+          }
         }
         return;
       }
@@ -483,16 +642,26 @@ class PosApp {
       }
       case "delete-table": {
         const tableId = Number(button.dataset.tableId);
-        if (!window.confirm("Masa silinsin mi?")) {
-          return;
-        }
+        const tbl = this.findTable(tableId);
+        const delTableOk = await this.openConfirmDialog({
+          message: `"${tbl?.name ?? "Masa"}" Silinsin mi?`,
+          subMessage: "Bu işlem geri alınamaz.",
+          confirmLabel: "Evet, Sil",
+          danger: true,
+        });
+        this.state.confirmDialog = null;
+        this.render();
+        if (!delTableOk) return;
 
-        await this.withLoading(async () => {
+        const success = await this.withLoading(async () => {
           await api.deleteTable(tableId);
           await this.loadData();
         });
-        this.resetTableForm();
-        this.showToast("Masa silindi.", "success");
+
+        if (success) {
+          this.resetTableForm();
+          this.showToast("Masa silindi.", "success");
+        }
         return;
       }
       case "reset-table-form":
@@ -511,16 +680,26 @@ class PosApp {
       }
       case "delete-category": {
         const categoryId = Number(button.dataset.categoryId);
-        if (!window.confirm("Kategori silinsin mi?")) {
-          return;
-        }
+        const cat = this.findCategory(categoryId);
+        const delCatOk = await this.openConfirmDialog({
+          message: `"${cat?.name ?? "Kategori"}" Silinsin mi?`,
+          subMessage: "Bu kategoriye ait ürünler varsa silinemez.",
+          confirmLabel: "Evet, Sil",
+          danger: true,
+        });
+        this.state.confirmDialog = null;
+        this.render();
+        if (!delCatOk) return;
 
-        await this.withLoading(async () => {
+        const success = await this.withLoading(async () => {
           await api.deleteCategory(categoryId);
           await this.loadData();
         });
-        this.resetCategoryForm();
-        this.showToast("Kategori silindi.", "success");
+
+        if (success) {
+          this.resetCategoryForm();
+          this.showToast("Kategori silindi.", "success");
+        }
         return;
       }
       case "reset-category-form":
@@ -545,16 +724,26 @@ class PosApp {
       }
       case "delete-product": {
         const productId = Number(button.dataset.productId);
-        if (!window.confirm("Urun silinsin mi?")) {
-          return;
-        }
+        const prod = this.findProduct(productId);
+        const delProdOk = await this.openConfirmDialog({
+          message: `"${prod?.name ?? "Ürün"}" Silinsin mi?`,
+          subMessage: "Bu işlem geri alınamaz.",
+          confirmLabel: "Evet, Sil",
+          danger: true,
+        });
+        this.state.confirmDialog = null;
+        this.render();
+        if (!delProdOk) return;
 
-        await this.withLoading(async () => {
+        const success = await this.withLoading(async () => {
           await api.deleteProduct(productId);
           await this.loadData();
         });
-        this.resetProductForm();
-        this.showToast("Urun silindi.", "success");
+
+        if (success) {
+          this.resetProductForm();
+          this.showToast("Urun silindi.", "success");
+        }
         return;
       }
       case "reset-product-form":
@@ -578,9 +767,52 @@ class PosApp {
       return;
     }
 
+    // Sync form inputs to draft state before re-render to preserve values
+    this.state.productDraft.name = document.querySelector<HTMLInputElement>("#product-name-input")?.value ?? "";
+    const catVal = document.querySelector<HTMLSelectElement>("#product-category-input")?.value;
+    this.state.productDraft.categoryId = catVal ? Number(catVal) : null;
+    this.state.productDraft.price = document.querySelector<HTMLInputElement>("#product-price-input")?.value ?? "";
+
     const imageData = await cropImageToAspectRatio(file, 4 / 3);
     this.state.productDraft.imageData = imageData;
     this.render();
+  }
+
+  private handleInput(event: Event): void {
+    const target = event.target as HTMLInputElement | null;
+    if (!target || target.id !== "global-search-input") {
+      return;
+    }
+
+    const query = target.value.toLowerCase().trim();
+
+    // Filter products
+    const productGrid = document.querySelector("#product-grid");
+    if (productGrid) {
+      const productButtons = productGrid.querySelectorAll("button[data-product-id]");
+      productButtons.forEach((button) => {
+        const text = button.textContent?.toLowerCase() ?? "";
+        if (text.includes(query)) {
+          button.classList.remove("hidden");
+        } else {
+          button.classList.add("hidden");
+        }
+      });
+    }
+
+    // Filter tables
+    const tableSidebar = document.querySelector("section.w-1\\/5");
+    if (tableSidebar) {
+      const tableCards = tableSidebar.querySelectorAll("div[data-table-id]");
+      tableCards.forEach((card) => {
+        const text = card.textContent?.toLowerCase() ?? "";
+        if (text.includes(query)) {
+          card.classList.remove("hidden");
+        } else {
+          card.classList.add("hidden");
+        }
+      });
+    }
   }
 }
 

@@ -27,6 +27,6 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["deb", "rpm"]
+    "targets": ["nsis"]
   }
 }

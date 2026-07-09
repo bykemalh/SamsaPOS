@@ -1,13 +1,86 @@
 @import "tailwindcss";
 
+@theme {
+  --color-on-tertiary-fixed-variant: #783200;
+  --color-on-secondary-fixed-variant: #005236;
+  --color-tertiary-container: #481b00;
+  --color-tertiary: #280c00;
+  --color-primary-fixed-dim: #bcc7de;
+  --color-surface-container-lowest: #ffffff;
+  --color-on-primary-container: #8590a6;
+  --color-primary: #091426;
+  --color-background: #f7f9fb;
+  --color-secondary-container: #6cf8bb;
+  --color-on-secondary: #ffffff;
+  --color-on-tertiary-container: #eb6905;
+  --color-surface-container-highest: #e0e3e5;
+  --color-on-error: #ffffff;
+  --color-primary-container: #1e293b;
+  --color-on-surface-variant: #45474c;
+  --color-outline: #75777d;
+  --color-on-primary: #ffffff;
+  --color-on-primary-fixed: #111c2d;
+  --color-surface-dim: #d8dadc;
+  --color-inverse-on-surface: #eff1f3;
+  --color-inverse-surface: #2d3133;
+  --color-surface-container: #eceef0;
+  --color-on-secondary-fixed: #002113;
+  --color-surface-container-low: #f2f4f6;
+  --color-surface-bright: #f7f9fb;
+  --color-outline-variant: #c5c6cd;
+  --color-surface-variant: #e0e3e5;
+  --color-on-tertiary: #ffffff;
+  --color-secondary-fixed-dim: #4edea3;
+  --color-on-surface: #191c1e;
+  --color-primary-fixed: #d8e3fb;
+  --color-on-background: #191c1e;
+  --color-error-container: #ffdad6;
+  --color-on-tertiary-fixed: #341100;
+  --color-inverse-primary: #bcc7de;
+  --color-tertiary-fixed-dim: #ffb690;
+  --color-error: #ba1a1a;
+  --color-on-primary-fixed-variant: #3c475a;
+  --color-secondary-fixed: #6ffbbe;
+  --color-surface: #f7f9fb;
+  --color-tertiary-fixed: #ffdbca;
+  --color-on-error-container: #93000a;
+  --color-surface-container-high: #e6e8ea;
+  --color-secondary: #006c49;
+  --color-on-secondary-container: #00714d;
+  --color-surface-tint: #545f73;
+
+  --border-radius-DEFAULT: 0.25rem;
+  --border-radius-lg: 0.5rem;
+  --border-radius-xl: 0.75rem;
+  --border-radius-full: 9999px;
+
+  --spacing-base: 4px;
+  --spacing-xs: 4px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-sidebar-width: 0px;
+  --spacing-xl: 32px;
+  --spacing-sm: 8px;
+  --spacing-action-panel-width: 360px;
+
+  --font-family-headline-md: "Inter", sans-serif;
+  --font-family-numeric-pos: "Inter", sans-serif;
+  --font-family-display-lg: "Inter", sans-serif;
+  --font-family-body-md: "Inter", sans-serif;
+  --font-family-label-md: "Inter", sans-serif;
+  --font-family-headline-sm: "Inter", sans-serif;
+  --font-family-body-lg: "Inter", sans-serif;
+  --font-family-sans: "Inter", sans-serif;
+}
+
 :root {
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  color: #0f172a;
-  background: #f1f5f9;
+  color: #191c1e;
+  background: #f7f9fb;
 }
 
 * {
@@ -18,22 +91,24 @@ html,
 body,
 #app {
   margin: 0;
-  min-height: 100%;
-  min-height: 100dvh;
+  height: 100%;
+  overflow: hidden;
 }
 
 body {
   min-width: 0;
   overflow-x: hidden;
-  background: linear-gradient(135deg, #f1f5f9 0%, #ffffff 50%, #f1f5f9 100%);
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
 }
 
 button,
 input,
-select {
-  font: inherit;
+select,
+textarea {
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
 }
 
 button {
@@ -46,26 +121,29 @@ button:active {
   filter: none;
 }
 
-button,
-input,
-select {
-  transition: none !important;
-}
-
 img {
   display: block;
 }
 
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-thumb {
-  border-radius: 4px;
-  background: rgba(148, 163, 184, 0.7);
+  border-radius: 9999px;
+  background: rgba(117, 119, 125, 0.3);
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(226, 232, 240, 0.8);
+  background: transparent;
+}
+
+/* Hide scrollbars but allow scrolling for category selection */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

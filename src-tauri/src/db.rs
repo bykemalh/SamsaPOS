@@ -94,61 +94,6 @@ fn run_migrations(connection: &Connection) -> Result<(), String> {
     Ok(())
 }
 
-fn seed_data(connection: &Connection) -> Result<(), String> {
-    let table_count: i64 = connection
-        .query_row("SELECT COUNT(*) FROM tables", [], |row| row.get(0))
-        .map_err(|error| format!("Masa sayisi okunamadi: {error}"))?;
-
-    if table_count == 0 {
-        for index in 1..=12 {
-            connection
-                .execute(
-                    "INSERT INTO tables (name, position_index, status) VALUES (?1, ?2, 'available')",
-                    (format!("Masa {index}"), index),
-                )
-                .map_err(|error| format!("Ornek masalar eklenemedi: {error}"))?;
-        }
-    }
-
-    let category_count: i64 = connection
-        .query_row("SELECT COUNT(*) FROM categories", [], |row| row.get(0))
-        .map_err(|error| format!("Kategori sayisi okunamadi: {error}"))?;
-
-    if category_count == 0 {
-        let defaults = ["Corbalar", "Ana Yemekler", "Tatlilar", "Icecekler"];
-
-        for (index, category) in defaults.iter().enumerate() {
-            connection
-                .execute(
-                    "INSERT INTO categories (name, sort_order, is_active) VALUES (?1, ?2, 1)",
-                    (category, index as i64 + 1),
-                )
-                .map_err(|error| format!("Ornek kategoriler eklenemedi: {error}"))?;
-        }
-    }
-
-    let product_count: i64 = connection
-        .query_row("SELECT COUNT(*) FROM products", [], |row| row.get(0))
-        .map_err(|error| format!("Urun sayisi okunamadi: {error}"))?;
-
-    if product_count == 0 {
-        let defaults = [
-            (1_i64, "Mercimek Corbasi", 95.0_f64),
-            (2_i64, "Tavuklu Noodle", 245.0_f64),
-            (2_i64, "Sebzeli Pilav", 175.0_f64),
-            (3_i64, "Sutlac", 90.0_f64),
-            (4_i64, "Ayran", 35.0_f64),
-        ];
-
-        for (category_id, name, price) in defaults {
-            connection
-                .execute(
-                    "INSERT INTO products (category_id, name, image_data, price, is_active) VALUES (?1, ?2, NULL, ?3, 1)",
-                    (category_id, name, price),
-                )
-                .map_err(|error| format!("Ornek urunler eklenemedi: {error}"))?;
-        }
-    }
-
+fn seed_data(_connection: &Connection) -> Result<(), String> {
     Ok(())
 }

@@ -1,5 +1,15 @@
 export type AppView = "pos" | "tables" | "categories" | "products" | "history";
-export type FormModal = "table" | "category" | "product";
+export type FormModal = "table" | "category" | "product" | "new-order" | "package-order" | "table-select";
+
+export interface ConfirmDialog {
+  message: string;
+  subMessage?: string;
+  confirmLabel?: string;
+  confirmPrintLabel?: string;
+  danger?: boolean;
+  onConfirm: () => void;
+  onConfirmPrint?: () => void;
+}
 
 export interface DiningTable {
   id: number;
@@ -83,6 +93,7 @@ export interface UiState {
   view: AppView;
   isFullscreen: boolean;
   activeModal: FormModal | null;
+  confirmDialog: ConfirmDialog | null;
   loading: boolean;
   selectedTableId: number | null;
   selectedCategoryId: number | null;
