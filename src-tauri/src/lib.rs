@@ -18,8 +18,10 @@ pub fn run() {
             commands::get_dashboard,
             commands::get_order_by_table,
             commands::get_closed_orders,
+            commands::get_closed_orders_by_date,
             commands::get_receipt,
             commands::create_table,
+            commands::create_package_order,
             commands::update_table,
             commands::delete_table,
             commands::create_category,
@@ -32,7 +34,15 @@ pub fn run() {
             commands::set_order_item_quantity,
             commands::remove_order_item,
             commands::clear_table_order,
-            commands::close_table_order
+            commands::close_table_order,
+            commands::get_vat_rate,
+            commands::set_vat_rate,
+            commands::get_business_dates,
+            commands::get_daily_summary,
+            commands::get_sales_period_summary,
+            commands::get_closed_orders_by_range,
+            commands::close_business_day,
+            commands::show_touch_keyboard
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

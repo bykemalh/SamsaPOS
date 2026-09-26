@@ -1,5 +1,15 @@
 export type AppView = "pos" | "tables" | "categories" | "products" | "history";
-export type FormModal = "table" | "category" | "product" | "new-order" | "package-order" | "table-select";
+export type FormModal = "table" | "category" | "product" | "new-order" | "package-order" | "table-select" | "daily-report";
+
+export type PaymentMethod = "cash" | "card" | "other";
+
+export const PAYMENT_LABELS: Record<PaymentMethod, string> = {
+  cash: "Nakit",
+  card: "Kart",
+  other: "Diğer",
+};
+
+export const VAT_OPTIONS = [1, 10, 20] as const;
 
 export interface ConfirmDialog {
   message: string;
@@ -7,8 +17,10 @@ export interface ConfirmDialog {
   confirmLabel?: string;
   confirmPrintLabel?: string;
   danger?: boolean;
-  onConfirm: () => void;
-  onConfirmPrint?: () => void;
+  /** Adisyon kapatma dialog'unda ödeme yöntemi seçimi gösterilsin mi */
+  showPaymentSelect?: boolean;
+  onConfirm: (paymentMethod?: PaymentMethod) => void;
+  onConfirmPrint?: (paymentMethod?: PaymentMethod) => void;
 }
 
 export interface DiningTable {
@@ -33,6 +45,8 @@ export interface Product {
   name: string;
   imageData?: string | null;
   price: number;
+  /** KDV oranı (yüzde). Fiyat KDV dahildir. */
+  vatRate: number;
   isActive: boolean;
 }
 
@@ -43,6 +57,8 @@ export interface OrderItem {
   unitPrice: number;
   quantity: number;
   lineTotal: number;
+  /** Satış anındaki ürün KDV oranı snapshot'ı */
+  vatRate?: number | null;
 }
 
 export interface OrderDetail {
@@ -52,6 +68,9 @@ export interface OrderDetail {
   status: "open" | "closed" | "cancelled";
   openedAt?: string | null;
   closedAt?: string | null;
+  businessDate?: string | null;
+  vatRateSnapshot?: number | null;
+  paymentMethod?: string | null;
   items: OrderItem[];
   total: number;
 }
@@ -61,6 +80,8 @@ export interface ClosedOrderSummary {
   tableId: number;
   tableName: string;
   closedAt: string;
+  businessDate?: string | null;
+  paymentMethod?: string | null;
   itemCount: number;
   total: number;
 }
@@ -86,7 +107,57 @@ export interface ProductDraft {
   name: string;
   categoryId: number | null;
   price: string;
+  vatRate: number;
   imageData: string | null;
+}
+
+export interface DailyProductSale {
+  productId: number;
+  productName: string;
+  categoryName: string;
+  quantity: number;
+  total: number;
+}
+
+export interface DailyCategorySale {
+  categoryName: string;
+  quantity: number;
+  total: number;
+}
+
+export interface DailyPaymentBreakdown {
+  method: string;
+  count: number;
+  total: number;
+}
+
+export interface DailySummary {
+  date: string;
+  total: number;
+  orderCount: number;
+  itemCount: number;
+  averageBasket: number;
+  productSales: DailyProductSale[];
+  categorySales: DailyCategorySale[];
+  payments: DailyPaymentBreakdown[];
+  isClosed: boolean;
+  closedAt?: string | null;
+}
+
+export type ReportPeriodType = "daily" | "weekly" | "monthly" | "custom";
+
+export interface SalesPeriodSummary {
+  periodType: ReportPeriodType;
+  label: string;
+  startDate: string;
+  endDate: string;
+  total: number;
+  orderCount: number;
+  itemCount: number;
+  averageBasket: number;
+  productSales: DailyProductSale[];
+  categorySales: DailyCategorySale[];
+  payments: DailyPaymentBreakdown[];
 }
 
 export interface UiState {
@@ -107,6 +178,24 @@ export interface UiState {
     type: "success" | "error";
     message: string;
   } | null;
+  /** KDV oranı (fiyatlara dahil). Varsayılan 10 */
+  vatRate: number;
+  /** Rapor dönemi türü */
+  reportPeriod: ReportPeriodType;
+  reportStartDate: string;
+  reportEndDate: string;
+  reportLabel: string;
+  selectedYear: number;
+  selectedMonth: number;
+  /** Günlük satış görünümünde seçili gün (YYYY-MM-DD) */
+  selectedDate: string;
+  dailySummary: DailySummary | null;
+  salesSummary: SalesPeriodSummary | null;
+  businessDates: string[];
+  /** Kapatma dialog'unda seçili ödeme yöntemi */
+  pendingPaymentMethod: PaymentMethod;
+  /** Yazı alanına dokununca Windows sanal klavyesi otomatik açılsın mı */
+  touchKeyboardEnabled: boolean;
 }
 
 export interface ProductPayload {
@@ -115,4 +204,5 @@ export interface ProductPayload {
   name: string;
   imageData?: string | null;
   price: number;
+  vatRate: number;
 }

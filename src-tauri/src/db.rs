@@ -36,6 +36,29 @@ fn database_path(app_dir: &PathBuf) -> PathBuf {
     app_dir.join("samsa-pos.sqlite")
 }
 
+fn column_exists(connection: &Connection, table: &str, column: &str) -> bool {
+    let mut stmt = match connection.prepare(&format!("PRAGMA table_info({table})")) {
+        Ok(s) => s,
+        Err(_) => return false,
+    };
+    let rows = match stmt.query_map([], |row| row.get::<_, String>(1)) {
+        Ok(r) => r,
+        Err(_) => return false,
+    };
+    let names: Vec<String> = rows.flatten().collect();
+    names.iter().any(|name| name == column)
+}
+
+fn ensure_column(connection: &Connection, table: &str, column: &str, ddl: &str) -> Result<(), String> {
+    if column_exists(connection, table, column) {
+        return Ok(());
+    }
+    connection
+        .execute(&format!("ALTER TABLE {table} ADD COLUMN {column} {ddl}"), [])
+        .map_err(|error| format!("Veritabani guncellenemedi ({table}.{column}): {error}"))?;
+    Ok(())
+}
+
 fn run_migrations(connection: &Connection) -> Result<(), String> {
     connection
         .execute_batch(
@@ -87,13 +110,87 @@ fn run_migrations(connection: &Connection) -> Result<(), String> {
                 FOREIGN KEY(order_id) REFERENCES orders(id) ON DELETE CASCADE,
                 FOREIGN KEY(product_id) REFERENCES products(id) ON DELETE RESTRICT
             );
+
+            CREATE TABLE IF NOT EXISTS settings (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS business_days (
+                date TEXT PRIMARY KEY,
+                status TEXT NOT NULL DEFAULT 'open',
+                closed_at TEXT,
+                total REAL NOT NULL DEFAULT 0,
+                order_count INTEGER NOT NULL DEFAULT 0,
+                item_count INTEGER NOT NULL DEFAULT 0
+            );
         ",
         )
         .map_err(|error| format!("Veritabani semasi olusturulamadi: {error}"))?;
 
+    // Kademeli kolon eklemeleri (mevcut veritabanlari icin güvenli)
+    ensure_column(connection, "tables", "is_deleted", "INTEGER NOT NULL DEFAULT 0")?;
+    ensure_column(connection, "orders", "business_date", "TEXT")?;
+    ensure_column(
+        connection,
+        "orders",
+        "vat_rate_snapshot",
+        "REAL NOT NULL DEFAULT 10",
+    )?;
+    ensure_column(connection, "orders", "payment_method", "TEXT")?;
+    ensure_column(connection, "orders", "table_name_snapshot", "TEXT")?;
+    ensure_column(connection, "products", "vat_rate", "REAL NOT NULL DEFAULT 10")?;
+    ensure_column(
+        connection,
+        "order_items",
+        "vat_rate_snapshot",
+        "REAL NOT NULL DEFAULT 10",
+    )?;
+
+    // Mevcut siparişlerde business_date boşsa opened/closed tarihten türet
+    connection
+        .execute(
+            "
+            UPDATE orders
+            SET business_date = DATE(COALESCE(closed_at, opened_at))
+            WHERE business_date IS NULL
+            ",
+            [],
+        )
+        .ok();
+    connection
+        .execute(
+            "
+            UPDATE orders
+            SET table_name_snapshot = (SELECT name FROM tables WHERE tables.id = orders.table_id)
+            WHERE table_name_snapshot IS NULL
+            ",
+            [],
+        )
+        .ok();
+
+    connection
+        .execute(
+            "CREATE INDEX IF NOT EXISTS idx_orders_business_date ON orders(business_date)",
+            [],
+        )
+        .ok();
+    connection
+        .execute(
+            "CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status)",
+            [],
+        )
+        .ok();
+
     Ok(())
 }
 
-fn seed_data(_connection: &Connection) -> Result<(), String> {
+fn seed_data(connection: &Connection) -> Result<(), String> {
+    connection
+        .execute(
+            "INSERT OR IGNORE INTO settings (key, value) VALUES ('vat_rate', '10')",
+            [],
+        )
+        .map_err(|error| format!("Varsayilan ayarlar yazilamadi: {error}"))?;
     Ok(())
 }

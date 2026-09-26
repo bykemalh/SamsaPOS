@@ -71,7 +71,16 @@ Projeyi yerel bilgisayarınızda çalıştırmak için aşağıdaki adımları t
 ### Gereksinimler
 1.  **Node.js** (v18 veya üzeri önerilir)
 2.  **Rust** ve Cargo (Rust kurulumu için [rustup.rs](https://rustup.rs/) adresini ziyaret edin)
-3.  **Tauri Ön Gereksinimleri:** İşletim sisteminize göre gerekli derleme araçları (Windows için C++ Build Tools). Detaylı kılavuz için [Tauri Prerequisites](https://v2.tauri.app/start/prerequisites/) sayfasını inceleyebilirsiniz.
+3.  **Tauri Ön Gereksinimleri:** İşletim sisteminize göre gerekli derleme araçları. Detaylı kılavuz için [Tauri Prerequisites](https://v2.tauri.app/start/prerequisites/) sayfasını inceleyebilirsiniz.
+
+#### Windows'ta derleme (adım adım)
+1.  **Rust (MSVC):** [rustup-init.exe](https://rustup.rs/) ile kurun; `stable-x86_64-pc-windows-msvc` toolchain seçili olsun (`rustup show` ile kontrol edin).
+2.  **C++ Build Tools:** [Visual Studio Build Tools](https://visualstudio.microsoft.com/downloads/) kurup **"C++ ile masaüstü geliştirme"** iş yükünü işaretleyin (MSVC + Windows SDK).
+3.  **WebView2:** Windows 10/11'de genelde hazır gelir. Kurulu değilse kurulum sırasında uygulama sessizce önyükleyiciyi indirir (`webviewInstallMode: downloadBootstrapper`).
+4.  `npm install` → `npm run tauri dev` (geliştirme) veya `npm run tauri build` (kurulum paketi).
+5.  Çıktı: `src-tauri/target/release/bundle/nsis/` altında `Samsa POS_0.1.0_x64-setup.exe` oluşur (NSIS, Tauri tarafından otomatik indirilir, ayrıca kurulum gerekmez).
+6.  **Not:** İmzasız `.exe`, ilk açılışta Windows SmartScreen uyarısı verebilir — "Ek bilgi > Yine de çalıştır" ile devam edilir. Kurumsal dağıtım için kod imza sertifikası gerekir.
+7.  Veritabanı konumu (Windows): `%APPDATA%\com.bykemalh.samsa-asya-yemekleri\samsa-pos.sqlite`
 
 ### Adım Adım Kurulum
 
@@ -104,5 +113,5 @@ Projeyi yerel bilgisayarınızda çalıştırmak için aşağıdaki adımları t
 
 Uygulama çalıştırıldığında, işletim sisteminizin standart uygulama veri klasöründe (App Data) `samsa-pos.sqlite` adında bir SQLite veritabanı oluşturulur.
 
-*   **İlk Kurulum:** Uygulama ilk kez açıldığında `db.rs` içerisindeki şema komutları çalışarak gerekli tabloları (`tables`, `categories`, `products`, `orders`, `order_items`) otomatik oluşturur.
-*   **Örnek Veriler (Seed):** Veritabanı boş ise testlerinizi kolaylaştırmak için 12 adet masa, 4 adet kategori (Çorbalar, Ana Yemekler, Tatlılar, İçecekler) ve bazı popüler Asya yemekleri içeren ürünler otomatik olarak veritabanına eklenir.
+*   **İlk Kurulum:** Uygulama ilk kez açıldığında `db.rs` içerisindeki şema komutları çalışarak gerekli tabloları (`tables`, `categories`, `products`, `orders`, `order_items`, `settings`, `business_days`) otomatik oluşturur; mevcut veritabanları güvenli şekilde migrate edilir (yeni kolonlar eklenir, eski veri korunur).
+*   **Varsayılan Ayarlar:** KDV varsayılanı `%10` olarak `settings` tablosuna yazılır; her ürüne özel KDV oranı tanımlanabilir.

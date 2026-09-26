@@ -1,0 +1,40 @@
+name: Windows Build
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Repoyu Klonla
+        uses: actions/checkout@v4
+
+      - name: Node.js Kurulumu
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Rust Kurulumu
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Bağımlılıkları Yükle
+        run: npm ci
+
+      - name: Tauri Windows Build
+        run: npm run tauri build
+
+      - name: Windows Kurulum Dosyalarını Artifact Olarak Yükle
+        uses: actions/upload-artifact@v4
+        with:
+          name: SamsaPOS-Windows-Installer
+          path: |
+            src-tauri/target/release/bundle/nsis/*.exe
+            src-tauri/target/release/bundle/msi/*.msi
+            src-tauri/target/release/*.exe
